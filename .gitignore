@@ -23,8 +23,27 @@ dist-ssr
 *.sln
 *.sw?
 
+# Node / packages
 node_modules/
-build/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Vite / build
+dist/
+.vite/
+.cache/
+*.log
+
+# Env
 .env
+.env.*
+!env.example
+
+# Editor / OS
 .DS_Store
+*.swp
+.idea/
+.vscode/
+
 

@@ -1,14 +1,22 @@
 import { useMemo, useState } from "react";
-import Header from "../components/Header";
-import ImportCard from "../ImportCard/import";
-import AllocationPie from "../components/AllocationPie";
-import TasksPanel from "../components/TasksPanel";
-import DayTimeline from "../components/DayTimeline";
-import Footer from "../components/Footer";
+import Header from "./components/Header";
+import ImportCard from "./ImportCard/import";
+import AllocationPie from "./components/AllocationPie";
+import TasksPanel from "./components/TasksPanel";
+import DayTimeline from "./components/DayTimeline";
+import Footer from "./components/Footer";
 
 function App() {
+
+  function localDateISO(d = new Date()) {
+    const tz = d.getTimezoneOffset() * 60000; // ms
+    return new Date(d.getTime() - tz).toISOString().slice(0, 10); // YYYY-MM-DD in local time
+  }
+
   const [eventsByDate, setEventsByDate] = useState({});
-  const [selectedDateISO, setSelectedDateISO] = useState("");
+
+  const [selectedDateISO, setSelectedDateISO] = useState(() => localDateISO());
+
   const [tasksByDate, setTasksByDate] = useState({});
 
   const hasCalendar = Object.keys(eventsByDate).length > 0;
@@ -84,8 +92,9 @@ const taskIntervals = useMemo(() => {
               onParsed={(data) => {
                 const map = isMapShape(data) ? data : groupByDate(data);
                 setEventsByDate(map);
-                const today = new Date().toISOString().slice(0, 10);
-                setSelectedDateISO(map[today] ? today : Object.keys(map)[0] || "");
+
+                // Always default to *today*.
+                setSelectedDateISO(localDateISO());
               }}
             />
           </div>
