@@ -1,27 +1,23 @@
 import { useMemo, useState } from "react";
-import Header from "./Header";
+import Header from "../components/Header";
 import ImportCard from "../ImportCard/import";
 import AllocationPie from "../components/AllocationPie";
 import TasksPanel from "../components/TasksPanel";
 import DayTimeline from "../components/DayTimeline";
+import Footer from "../components/Footer";
 
 function App() {
-  // Calendar data: { "YYYY-MM-DD": [{ start: Date, end: Date, title }] }
   const [eventsByDate, setEventsByDate] = useState({});
-  // Selected day (YYYY-MM-DD)
   const [selectedDateISO, setSelectedDateISO] = useState("");
-  // Tasks per day: { "YYYY-MM-DD": [{ id, name, minutes, startMin? }] }
   const [tasksByDate, setTasksByDate] = useState({});
 
   const hasCalendar = Object.keys(eventsByDate).length > 0;
 
-  // Events for selected day
-  const dayEvents = useMemo(() => {
-    if (!selectedDateISO) return [];
-    return eventsByDate[selectedDateISO] || [];
-  }, [eventsByDate, selectedDateISO]);
+  const dayEvents = useMemo(
+    () => (selectedDateISO ? eventsByDate[selectedDateISO] || [] : []),
+    [eventsByDate, selectedDateISO]
+  );
 
-  // Busy minutes from calendar for the selected day
   const busyMinutes = useMemo(() => {
     if (!selectedDateISO) return 0;
     const ivs = clampToDay(dayEvents, selectedDateISO);
@@ -29,36 +25,39 @@ function App() {
     return totalMinutes(merged);
   }, [dayEvents, selectedDateISO]);
 
-  // Intervals (merged) for the 24h timeline (calendar)
   const dayIntervals = useMemo(() => {
     const ivs = clampToDay(dayEvents, selectedDateISO);
     return mergeOverlaps(ivs);
   }, [dayEvents, selectedDateISO]);
 
-  // Tasks for the selected day
-  const tasks = useMemo(() => {
-    if (!selectedDateISO) return [];
-    return tasksByDate[selectedDateISO] || [];
-  }, [tasksByDate, selectedDateISO]);
+  const tasks = useMemo(
+    () => (selectedDateISO ? tasksByDate[selectedDateISO] || [] : []),
+    [tasksByDate, selectedDateISO]
+  );
 
-  // Sum of task minutes
   const tasksMinutes = useMemo(
     () => tasks.reduce((s, t) => s + (Number(t.minutes) || 0), 0),
     [tasks]
   );
 
-  // Convert tasks with a start time into timeline bars
-  const taskIntervals = useMemo(() => {
-    return tasks
-      .filter((t) => Number.isFinite(t.startMin))
-      .map((t) => {
-        const startMin = Math.max(0, Math.min(1439, Number(t.startMin)));
-        const endMin = Math.max(startMin, Math.min(1440, startMin + (Number(t.minutes) || 0)));
-        return { startMin, endMin };
-      });
-  }, [tasks]);
+// Intervals for planned tasks (startMin + minutes), clamped to the day
+const taskIntervals = useMemo(() => {
+  return (tasks || [])
+    .filter(
+      (t) =>
+        Number.isFinite(t.startMin) &&
+        Number.isFinite(t.minutes) &&
+        t.minutes > 0
+    )
+    .map((t) => {
+      const start = Math.max(0, t.startMin);
+      const end = Math.min(24 * 60, t.startMin + t.minutes);
+      return end > start ? { startMin: start, endMin: end } : null;
+    })
+    .filter(Boolean);
+}, [tasks]);
 
-  // Task mutators
+
   function addTask(task) {
     if (!selectedDateISO) return;
     setTasksByDate((prev) => ({
@@ -78,10 +77,8 @@ function App() {
   return (
     <>
       <Header />
-
-      <main className="w-screen px-4 py-8">
+      <main className="px-4 pb-12">
         {!hasCalendar ? (
-          // -------- Import first --------
           <div className="min-h-[60vh] flex items-center justify-center">
             <ImportCard
               onParsed={(data) => {
@@ -93,31 +90,30 @@ function App() {
             />
           </div>
         ) : (
-          // -------- Dashboard for selected day --------
-          <div className="mx-auto max-w-5xl space-y-6">
-            {/* Date picker + counts */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-3">
+          <div className="mx-auto max-w-6xl space-y-6">
+            {/* Toolbar */}
+            <div className="card p-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <label className="text-sm text-slate-600">Pick a date:</label>
                 <input
                   type="date"
-                  className="rounded border border-slate-300 px-3 py-1.5"
+                  className="field"
                   value={selectedDateISO}
                   onChange={(e) => setSelectedDateISO(e.target.value)}
                   list="available-dates"
                 />
                 <datalist id="available-dates">
-                  {Object.keys(eventsByDate)
-                    .sort()
-                    .map((d) => (
-                      <option key={d} value={d} />
-                    ))}
+                  {Object.keys(eventsByDate).sort().map((d) => (
+                    <option key={d} value={d} />
+                  ))}
                 </datalist>
 
-                <div className="ml-auto text-sm text-slate-600">
-                  Events: <b>{dayEvents.length}</b> · Busy:{" "}
-                  <b>{(busyMinutes / 60).toFixed(2)}h</b> · Free:{" "}
-                  <b>{((24 * 60 - busyMinutes - tasksMinutes) / 60).toFixed(2)}h</b>
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="pill">Events <b>{dayEvents.length}</b></span>
+                  <span className="pill">Busy <b>{(busyMinutes / 60).toFixed(2)}h</b></span>
+                  <span className="pill">
+                    Free <b>{((24 * 60 - busyMinutes - tasksMinutes) / 60).toFixed(2)}h</b>
+                  </span>
                 </div>
               </div>
             </div>
@@ -125,19 +121,27 @@ function App() {
             {/* Row: Pie + Tasks */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <div className="md:col-span-2">
-                <AllocationPie busyMinutes={busyMinutes} tasksMinutes={tasksMinutes} />
+                <div className="card p-4">
+                  <AllocationPie busyMinutes={busyMinutes} tasksMinutes={tasksMinutes} />
+                </div>
               </div>
               <div className="md:col-span-3">
-                <TasksPanel tasks={tasks} onAddTask={addTask} onRemoveTask={removeTask} />
+                <div className="card p-4">
+                  <TasksPanel tasks={tasks} onAddTask={addTask} onRemoveTask={removeTask} />
+                </div>
               </div>
             </div>
 
-            {/* Timeline: calendar (pink) + tasks (blue) */}
-            <DayTimeline intervals={dayIntervals} taskIntervals={taskIntervals} />
+            {/* Timeline */}
+            <div className="card p-4">
+              <DayTimeline intervals={dayIntervals} taskIntervals={taskIntervals} />
+            </div>
 
-            {/* Events list */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-lg font-semibold">{selectedDateISO} — Events</h2>
+            {/* Events */}
+            <div className="card p-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {selectedDateISO} — Events
+              </h2>
               {dayEvents.length === 0 ? (
                 <p className="text-sm text-slate-500 mt-1">No events on this day.</p>
               ) : (
@@ -148,9 +152,9 @@ function App() {
                     .map((ev, i) => (
                       <li
                         key={i}
-                        className="flex items-center justify-between rounded border border-slate-200 p-2"
+                        className="flex items-center justify-between rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition"
                       >
-                        <span className="text-slate-800">{ev.title || "Event"}</span>
+                        <span className="text-slate-900">{ev.title || "Event"}</span>
                         <span className="tabular-nums text-sm text-slate-600">
                           {fmt12(ev.start)} – {fmt12(ev.end)}
                         </span>
@@ -162,18 +166,15 @@ function App() {
           </div>
         )}
       </main>
+      <Footer />
     </>
   );
 }
 
-/* ----------------- Helpers (unchanged) ----------------- */
-
-// If your ImportCard already returns { "YYYY-MM-DD": CalEvent[] }
+/* ----------------- Helpers ----------------- */
 function isMapShape(x) {
   return x && typeof x === "object" && !Array.isArray(x);
 }
-
-// If you instead got a flat array: [{start: Date, end: Date, title}]
 function groupByDate(events) {
   const map = {};
   for (const ev of events) {
@@ -184,26 +185,20 @@ function groupByDate(events) {
       const dayISO = cursor.toISOString().slice(0, 10);
       const s = new Date(Math.max(ev.start.getTime(), new Date(dayISO + "T00:00:00").getTime()));
       const e = new Date(Math.min(ev.end.getTime(), new Date(dayISO + "T23:59:59.999").getTime()));
-      if (e > s) {
-        (map[dayISO] ||= []).push({ start: s, end: e, title: ev.title || "Event" });
-      }
+      if (e > s) (map[dayISO] ||= []).push({ start: s, end: e, title: ev.title || "Event" });
       cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
     }
   }
   return map;
 }
-
 function fmt12(d) {
   let h = d.getHours();
   const m = d.getMinutes();
   const am = h < 12;
-  h = h % 12;
   if (h === 0) h = 12;
-  const mm = String(m).padStart(2, "0");
-  return `${h}:${mm}${am ? "am" : "pm"}`; // no space before am/pm
+  if (h > 12) h -= 12;
+  return `${h}:${String(m).padStart(2, "0")} ${am ? "AM" : "PM"}`;
 }
-
-
 function clampToDay(events, dateISO) {
   if (!dateISO) return [];
   const dayStart = new Date(dateISO + "T00:00:00").getTime();
@@ -218,7 +213,6 @@ function clampToDay(events, dateISO) {
     }))
     .filter((iv) => iv.endMin > iv.startMin);
 }
-
 function mergeOverlaps(intervals) {
   const sorted = intervals.slice().sort((a, b) => a.startMin - b.startMin);
   const out = [];
@@ -229,9 +223,7 @@ function mergeOverlaps(intervals) {
   }
   return out;
 }
-
 function totalMinutes(intervals) {
   return intervals.reduce((s, iv) => s + (iv.endMin - iv.startMin), 0);
 }
-
 export default App;

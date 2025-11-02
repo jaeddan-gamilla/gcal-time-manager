@@ -1,52 +1,49 @@
 export default function DayTimeline({ intervals, taskIntervals = [] }) {
-  // intervals: calendar busy [{startMin, endMin}]
-  // taskIntervals: tasks with time [{startMin, endMin}]
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-lg font-semibold mb-2">Day Timeline</h3>
+  const hours = Array.from({ length: 25 }, (_, i) => i);
 
-      <div className="relative h-8 rounded bg-slate-100 overflow-hidden">
-        {/* calendar busy (pink) */}
-        {intervals.map((iv, i) => (
-          <Bar key={`cal-${i}`} iv={iv} className="bg-rose-400/70" />
-        ))}
-        {/* tasks (blue) */}
-        {taskIntervals.map((iv, i) => (
-          <Bar key={`task-${i}`} iv={iv} className="bg-sky-400/80" />
-        ))}
-      </div>
-
-      <div className="mt-2 flex justify-between text-xs text-slate-500">
-        <span>12 AM</span>
-        <span>6 AM</span>
-        <span>12 PM</span>
-        <span>6 PM</span>
-        <span>12 AM</span>
-      </div>
-      <p className="mt-1 text-xs text-slate-500">
-        Pink = Calendar busy · Blue = Tasks (timed)
-      </p>
-    </div>
-  );
-}
-
-function Bar({ iv, className }) {
-  const left = (iv.startMin / 1440) * 100;
-  const width = (Math.max(0, iv.endMin - iv.startMin) / 1440) * 100;
-  return (
+  const Block = ({ iv, className }) => (
     <div
-      className={`absolute top-0 bottom-0 ${className}`}
-      style={{ left: `${left}%`, width: `${width}%` }}
-      title={`${fmt12(iv.startMin)}–${fmt12(iv.endMin)}`}
+      className={`absolute top-0 bottom-0 rounded-md ${className}`}
+      style={{
+        left: `${(iv.startMin / (24 * 60)) * 100}%`,
+        width: `${((iv.endMin - iv.startMin) / (24 * 60)) * 100}%`,
+      }}
     />
   );
-}
 
-function fmt12(m) {
-  let h24 = Math.floor(m / 60);
-  const min = m % 60;
-  const am = h24 < 12;
-  let h12 = h24 % 12;
-  if (h12 === 0) h12 = 12;
-  return `${h12}:${String(min).padStart(2, "0")} ${am ? "AM" : "PM"}`;
+  return (
+    <>
+      <h2 className="text-lg font-semibold text-slate-900 mb-3">Day Timeline</h2>
+
+      {/* Track */}
+      <div className="relative h-6 rounded-md bg-slate-200 overflow-hidden">
+        {/* Calendar busy (blue) underlay */}
+        {intervals.map((iv, i) => (
+          <Block key={`cal-${i}`} iv={iv} className="bg-sky-500/80" />
+        ))}
+
+        {/* Planned tasks (green) overlay */}
+        {taskIntervals.map((iv, i) => (
+          <Block
+            key={`task-${i}`}
+            iv={iv}
+            className="bg-emerald-500/90 ring-1 ring-emerald-600/40"
+          />
+        ))}
+      </div>
+
+      {/* Hour ticks */}
+      <div className="flex justify-between text-xs text-slate-500 mt-2">
+        {hours.map((h) => {
+          const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+          return <span key={h}>{label}</span>;
+        })}
+      </div>
+
+      <p className="mt-1 text-xs text-slate-500">
+        <span className="font-medium text-sky-700">Blue</span> = calendar busy ·{" "}
+        <span className="font-medium text-emerald-700">Green</span> = planned tasks
+      </p>
+    </>
+  );
 }

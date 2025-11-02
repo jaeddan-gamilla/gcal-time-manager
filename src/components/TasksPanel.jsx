@@ -5,11 +5,15 @@ function uid() {
 }
 
 function toMinutesFrom12h(h12, m, meridiem) {
+  // Accept 0–12, treat 0 as 12
   let h = Number(h12);
-  const min = Number(m);
-  const isPM = meridiem === "PM";
-  if (h === 12) h = 0;                 // 12 AM => 0; 12 PM handled by +12
-  const hours24 = isPM ? h + 12 : h;
+  if (!Number.isFinite(h)) h = 12;
+  if (h < 0) h = 0;
+  if (h > 12) h = 12;
+
+  const min = Math.max(0, Math.min(59, Number(m)));
+  const base = (h === 0 ? 12 : h) % 12;
+  const hours24 = base + (meridiem === "PM" ? 12 : 0);
   return hours24 * 60 + min;
 }
 
@@ -20,23 +24,21 @@ function format12h(mins) {
   const am = h24 < 12;
   let h12 = h24 % 12;
   if (h12 === 0) h12 = 12;
-  return `${h12}:${String(m).padStart(2, "0")}${am ? "am" : "pm"}`; // lowercase, no space
+  return `${h12}:${String(m).padStart(2, "0")} ${am ? "AM" : "PM"}`;
 }
 
-function durationToWords(total) {
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  const parts = [];
-  if (h > 0) parts.push(`${h} ${h === 1 ? "hour" : "hours"}`);
-  if (m > 0) parts.push(`${m} ${m === 1 ? "minute" : "minutes"}`);
-  return parts.length ? parts.join(" and ") : "0 minutes";
+function formatDuration(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
 }
-
 
 export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
   const [name, setName] = useState("");
-  const [startHour, setStartHour] = useState("9");
-  const [startMin, setStartMin] = useState("00");
+  const [startHour, setStartHour] = useState("");
+  const [startMin, setStartMin] = useState("");
   const [ampm, setAmpm] = useState("AM");
   const [durHours, setDurHours] = useState("");
   const [durMinutes, setDurMinutes] = useState("");
@@ -45,10 +47,10 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
 
   const canAdd = (() => {
     const nameOk = name.trim().length > 0;
-    const hOk = /^\d+$/.test(startHour) && +startHour >= 1 && +startHour <= 12;
+    const hOk = /^\d+$/.test(startHour) && +startHour >= 0 && +startHour <= 12;
     const mOk = /^\d+$/.test(startMin) && +startMin >= 0 && +startMin <= 59;
-    const dhOk = /^\d+$/.test(String(durHours)) && +durHours >= 0;
-    const dmOk = /^\d+$/.test(String(durMinutes)) && +durMinutes >= 0 && +durMinutes < 60;
+    const dhOk = /^\d+$/.test(durHours) && +durHours >= 0;
+    const dmOk = /^\d+$/.test(durMinutes) && +durMinutes >= 0 && +durMinutes < 60;
     const dur = +durHours * 60 + +durMinutes;
     return nameOk && hOk && mOk && dhOk && dmOk && dur > 0;
   })();
@@ -58,45 +60,54 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
     if (!canAdd) return;
     const startMinTotal = toMinutesFrom12h(startHour, startMin, ampm);
     const minutes = +durHours * 60 + +durMinutes;
-    onAddTask({ id: uid(), name: name.trim(), minutes, startMin: startMinTotal });
+    onAddTask({
+      id: uid(),
+      name: name.trim(),
+      minutes,
+      startMin: startMinTotal,
+    });
     setName("");
-    setDurHours(1);
-    setDurMinutes(0);
+    setDurHours("");
+    setDurMinutes("");
+    setStartHour("");
+    setStartMin("");
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <>
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Tasks</h3>
-        <div className="text-sm text-slate-600">Total: {(totalPlanned / 60).toFixed(2)}h</div>
+        <h3 className="text-lg font-semibold text-slate-900">Tasks</h3>
+        <div className="text-sm text-slate-600">
+          Total: {(totalPlanned / 60).toFixed(2)}h
+        </div>
       </div>
 
-      {/* FLEX WRAP FORM */}
       <form onSubmit={handleAdd} className="mt-3 flex flex-wrap items-center gap-3">
-        {/* Task name */}
         <input
-          className="flex-1 min-w-[220px] rounded border border-slate-300 px-3 py-1.5"
+          className="field flex-1 min-w-[220px]"
           placeholder="Task name (e.g., EECS 370)"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
 
-        {/* Start time */}
-        <div className="flex items-center gap-2 flex-none">
+        <div className="flex items-center gap-2">
           <input
             type="number"
-            min="1"
+            min="0"
             max="12"
-            className="w-14 rounded border border-slate-300 px-2 py-1.5 text-center"
+            className="field w-16 text-center"
             value={startHour}
-            onChange={(e) => setStartHour(e.target.value)}
+            onChange={(e) => {
+              const v = Math.max(0, Math.min(12, +e.target.value || 0));
+              setStartHour(String(v));
+            }}
           />
           :
           <input
             type="number"
             min="0"
             max="59"
-            className="w-14 rounded border border-slate-300 px-2 py-1.5 text-center"
+            className="field w-16 text-center"
             value={startMin}
             onChange={(e) => {
               const val = Math.min(Math.max(0, +e.target.value), 59);
@@ -104,7 +115,7 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
             }}
           />
           <select
-            className="w-24 rounded border border-slate-300 px-2 py-1.5"
+            className="field w-20"
             value={ampm}
             onChange={(e) => setAmpm(e.target.value)}
           >
@@ -113,13 +124,12 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
           </select>
         </div>
 
-        {/* Duration */}
-        <div className="flex items-center gap-2 flex-none">
+        <div className="flex items-center gap-2">
           <input
             type="number"
             min="0"
-            className="w-20 rounded border border-slate-300 px-2 py-1.5 text-center"
-            placeholder="hr"
+            className="field w-20 text-center"
+            placeholder="hrs"
             value={durHours}
             onChange={(e) => setDurHours(e.target.value)}
           />
@@ -127,7 +137,7 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
             type="number"
             min="0"
             max="59"
-            className="w-20 rounded border border-slate-300 px-2 py-1.5 text-center"
+            className="field w-20 text-center"
             placeholder="min"
             value={durMinutes}
             onChange={(e) => {
@@ -137,35 +147,31 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
           />
         </div>
 
-        {/* Add button — always green */}
-        <button
-            disabled={!canAdd}
-            className="flex-none rounded px-3 py-1.5 text-white
-                        bg-emerald-600 hover:bg-emerald-700
-                        disabled:bg-emerald-600 disabled:text-white
-                        disabled:hover:bg-emerald-600 disabled:cursor-not-allowed"
-            >
-            Add
+        <button disabled={!canAdd} className="btn-primary">
+          Add
         </button>
-
       </form>
 
       {tasks.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">No tasks yet. Add one above.</p>
+        <p className="mt-3 text-sm text-slate-500">
+          No tasks yet. Add one above.
+        </p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-200">
           {tasks.map((t) => (
             <li key={t.id} className="py-2 flex items-center justify-between">
               <div>
-                <div className="font-medium text-slate-800">{t.name}</div>
-                <div className="text-sm text-slate-500">
-                  {Number.isFinite(t.startMin) ? `${format12h(t.startMin)} · ` : ""}
-                  {durationToWords(t.minutes)}
+                <div className="font-medium text-slate-900">{t.name}</div>
+                <div className="text-sm text-slate-600">
+                  {Number.isFinite(t.startMin)
+                    ? `${format12h(t.startMin)} · `
+                    : ""}
+                  {formatDuration(t.minutes)}
                 </div>
               </div>
               <button
                 onClick={() => onRemoveTask(t.id)}
-                className="text-sm rounded border px-2 py-1 hover:bg-slate-50"
+                className="text-sm rounded border border-slate-300 px-2 py-1 hover:bg-slate-50"
               >
                 Remove
               </button>
@@ -173,6 +179,6 @@ export default function TasksPanel({ tasks, onAddTask, onRemoveTask }) {
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }

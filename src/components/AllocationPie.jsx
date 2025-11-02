@@ -1,41 +1,42 @@
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, Legend, Tooltip } from "recharts";
+
+const COLORS = ["#f43f5e", "#0ea5e9", "#10b981"]; // red-500, sky-500, emerald-500
 
 export default function AllocationPie({ busyMinutes, tasksMinutes }) {
-  const totalDay = 24 * 60;
-  const freeMinutes = Math.max(0, totalDay - busyMinutes - tasksMinutes);
-
+  const free = Math.max(0, 24 * 60 - busyMinutes - tasksMinutes);
   const data = [
     { name: "Busy (Calendar)", value: busyMinutes },
     { name: "Tasks (Planned)", value: tasksMinutes },
-    { name: "Free", value: freeMinutes },
+    { name: "Free", value: free },
   ];
 
-  const COLORS = ["#fb7185", "#60a5fa", "#34d399"]; // rose-400, blue-400, emerald-400
-
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-lg font-semibold mb-2">Day Allocation</h3>
-      <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              dataKey="value"
-              data={data}
-              innerRadius={60}
-              outerRadius={100}
-              stroke="#fff"
-              strokeWidth={1}
-            >
-              {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-            </Pie>
-            <Tooltip formatter={(v) => `${(v/60).toFixed(2)} h`} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+    <div>
+      <h2 className="text-lg font-semibold text-slate-900 mb-2">Day Allocation</h2>
+      <PieChart width={320} height={260}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          innerRadius={60}
+          outerRadius={100}
+          stroke="#e2e8f0"           /* slate-200 stroke */
+          strokeWidth={2}
+        >
+          {data.map((_, i) => (
+            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+
+      <div className="mt-2 text-sm text-slate-600">
+        Busy: {(busyMinutes / 60).toFixed(2)}h · Tasks: {(tasksMinutes / 60).toFixed(2)}h · Free:{" "}
+        {((24 * 60 - busyMinutes - tasksMinutes) / 60).toFixed(2)}h
       </div>
-      <p className="mt-2 text-sm text-slate-600">
-        Busy: {(busyMinutes/60).toFixed(2)}h · Tasks: {(tasksMinutes/60).toFixed(2)}h · Free: {(freeMinutes/60).toFixed(2)}h
-      </p>
     </div>
   );
 }
