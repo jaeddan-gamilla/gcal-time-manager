@@ -1,6 +1,6 @@
 # Google Calendar Time Manager
 
-A clean, Apple-style React app that **imports your Google Calendar (.ics)**, visualizes your day with a **timeline** and **pie chart**, and lets you **plan tasks** seamlessly in a modern interface.
+A clean, React app that **imports your Google Calendar (.ics)**, visualizes your day with a **timeline** and **pie chart**, and lets you **plan tasks** seamlessly in a modern interface.
 
 ---
 
@@ -50,11 +50,11 @@ Requires [Node.js](https://nodejs.org/) (v18+ recommended).
 
 1. Clone the repository  
    ```bash
-   git clone https://github.com/jaeddan-gamilla/google-calendar-time-manager.git
+   git clone https://github.com/jaeddan-gamilla/gcal-time-manager.git
 
 2. Navigate to the directory  
    ```bash
-   cd google-calendar-time-manager
+   cd gcal-time-manager
    ```
 
 3. Install dependencies  
@@ -89,16 +89,6 @@ Requires [Node.js](https://nodejs.org/) (v18+ recommended).
    - **Pink** — Calendar busy time  
    - **Blue** — Tasks  
    - **Green** — Remaining free time
-
----
-
-##  Roadmap
-
-- [ ] Drag-and-drop task repositioning on the timeline  
-- [ ] Export tasks to `.ics`  
-- [ ] Google OAuth for live sync  
-- [ ] Dark / Light mode toggle  
-- [ ] Weekly & monthly overview modes
 
 ---
 
