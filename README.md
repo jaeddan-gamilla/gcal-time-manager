@@ -1,6 +1,6 @@
 # Google Calendar Time Manager
 
-A clean, React app that **imports your Google Calendar (.ics)**, visualizes your day with a **timeline** and **pie chart**, and lets you **plan tasks** seamlessly in a modern interface.
+A clean React app that **imports your Google Calendar (.ics)**, visualizes your day with a **timeline** and **pie chart**, and lets you **plan tasks** seamlessly in a modern interface.
 
 ---
 
